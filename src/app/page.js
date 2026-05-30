@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 
-
 export default function LoginPage() {
+  const router = useRouter();
+
   const [form, setForm] = useState({
     email: "",
     password: ""
   });
 
-  const [user, setUser] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,33 +29,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await apiRequest("/auth/login", {
+      await apiRequest("/auth/login", {
         method: "POST",
         body: JSON.stringify(form)
       });
 
-      setUser(response.data.user);
+      router.push("/dashboard");
     } catch (error) {
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
-
-  if (user) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
-        <section className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-xl">
-          <p className="text-sm text-emerald-400 font-medium">Login successful</p>
-          <h1 className="text-2xl font-bold mt-2">Welcome, {user.name}</h1>
-          <p className="text-slate-400 mt-2">{user.email}</p>
-          <p className="text-slate-500 text-sm mt-6">
-            Next we will build the dashboard page and redirect users there after login.
-          </p>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
@@ -111,13 +97,14 @@ export default function LoginPage() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-          <p className="mt-6 text-center text-sm text-slate-400">
-            New to DevCollaborator?{" "}
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium">
-              Create an account
-            </Link>
-          </p>
         </form>
+
+        <p className="mt-6 text-center text-sm text-slate-400">
+          New to DevCollaborator?{" "}
+          <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium">
+            Create an account
+          </Link>
+        </p>
       </section>
     </main>
   );

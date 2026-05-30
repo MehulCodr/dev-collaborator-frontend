@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api";
 
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
