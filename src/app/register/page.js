@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { apiRequest } from "@/lib/api";
 
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const [form, setForm] = useState({
+    name: "",
     email: "",
     password: ""
   });
 
-  const [user, setUser] = useState(null);
+  const [createdUser, setCreatedUser] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,12 +28,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await apiRequest("/auth/login", {
+      const response = await apiRequest("/auth/register", {
         method: "POST",
         body: JSON.stringify(form)
       });
 
-      setUser(response.data.user);
+      setCreatedUser(response.data.user);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -41,16 +41,20 @@ export default function LoginPage() {
     }
   };
 
-  if (user) {
+  if (createdUser) {
     return (
       <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
         <section className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-xl">
-          <p className="text-sm text-emerald-400 font-medium">Login successful</p>
-          <h1 className="text-2xl font-bold mt-2">Welcome, {user.name}</h1>
-          <p className="text-slate-400 mt-2">{user.email}</p>
-          <p className="text-slate-500 text-sm mt-6">
-            Next we will build the dashboard page and redirect users there after login.
-          </p>
+          <p className="text-sm text-emerald-400 font-medium">Account created successfully</p>
+          <h1 className="text-2xl font-bold mt-2">Welcome, {createdUser.name}</h1>
+          <p className="text-slate-400 mt-2">{createdUser.email}</p>
+
+          <Link
+            href="/"
+            className="mt-8 block w-full rounded-xl bg-blue-600 py-3 text-center font-semibold hover:bg-blue-500"
+          >
+            Go to login
+          </Link>
         </section>
       </main>
     );
@@ -61,13 +65,28 @@ export default function LoginPage() {
       <section className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-xl">
         <div>
           <p className="text-sm text-blue-400 font-medium">DevCollaborator</p>
-          <h1 className="text-3xl font-bold mt-2">Login to your workspace</h1>
+          <h1 className="text-3xl font-bold mt-2">Create your account</h1>
           <p className="text-slate-400 mt-3">
-            Manage projects, tasks, comments, notifications, and analytics from one place.
+            Start managing teams, projects, tasks, comments, files, notifications, and analytics.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Name
+            </label>
+            <input
+              name="name"
+              type="text"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="Test User"
+              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+              required
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
               Email
@@ -95,6 +114,7 @@ export default function LoginPage() {
               placeholder="Password123"
               className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
               required
+              minLength={8}
             />
           </div>
 
@@ -109,15 +129,16 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-xl bg-blue-600 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Creating account..." : "Create account"}
           </button>
-          <p className="mt-6 text-center text-sm text-slate-400">
-            New to DevCollaborator?{" "}
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 font-medium">
-              Create an account
-            </Link>
-          </p>
         </form>
+
+        <p className="mt-6 text-center text-sm text-slate-400">
+          Already have an account?{" "}
+          <Link href="/" className="text-blue-400 hover:text-blue-300 font-medium">
+            Login
+          </Link>
+        </p>
       </section>
     </main>
   );
