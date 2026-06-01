@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import AppShell from "@/components/AppShell";
+import GitHubProjectPanel from "@/components/github/GithubProjectPanel";
 import Panel from "@/components/ui/Panel";
 import EmptyState from "@/components/ui/EmptyState";
 import Badge from "@/components/ui/Badge";
@@ -423,6 +424,7 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </Panel>
+      <GitHubProjectPanel projectId={projectId} />
 
       <Panel className="mt-8">
         <h2 className="text-xl font-bold">Project members</h2>
