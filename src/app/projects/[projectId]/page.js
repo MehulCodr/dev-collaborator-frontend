@@ -9,6 +9,7 @@ import GitHubProjectPanel from "@/components/github/GitHubProjectPanel";
 import Panel from "@/components/ui/Panel";
 import EmptyState from "@/components/ui/EmptyState";
 import AITaskAssistantPanel from "@/components/ai/AITaskAssistantPanel";
+import AIProjectIntelligencePanel from "@/components/ai/AIProjectIntelligencePanel";
 import Badge from "@/components/ui/Badge";
 
 export default function ProjectDetailPage() {
@@ -426,6 +427,15 @@ export default function ProjectDetailPage() {
         )}
       </Panel>
       <AITaskAssistantPanel projectId={projectId} onTasksCreated={loadProjectPage} />
+      <AITaskAssistantPanel projectId={projectId} onTasksCreated={loadProjectPage} />
+
+      <AIProjectIntelligencePanel projectId={projectId} />
+
+      <GitHubProjectPanel
+        projectId={projectId}
+        projectMembers={projectMembers}
+        onTaskCreated={loadProjectPage}
+      />
       <GitHubProjectPanel
         projectId={projectId}
         projectMembers={projectMembers}
