@@ -1,52 +1,85 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import AppShell from "@/components/AppShell";
 import Panel from "@/components/ui/Panel";
 import EmptyState from "@/components/ui/EmptyState";
 import Badge from "@/components/ui/Badge";
 
-export default function NotificationsPage() {
+export default function TaskDetailPage() {
+  const params = useParams();
   const router = useRouter();
+  const taskId = params.taskId;
 
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [filters, setFilters] = useState({
-    isRead: "",
-    type: ""
+  const [task, setTask] = useState(null);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [githubLinks, setGithubLinks] = useState([]);
+
+  const [statusForm, setStatusForm] = useState({
+    status: ""
   });
 
+  const [subtaskForm, setSubtaskForm] = useState({
+    title: ""
+  });
+
+  const [commentForm, setCommentForm] = useState({
+    body: "",
+    mentions: []
+  });
+
+  const [file, setFile] = useState(null);
+
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [addingComment, setAddingComment] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
+  const projectId = useMemo(() => {
+    return task?.project?._id || task?.project;
+  }, [task]);
 
-    if (filters.isRead) {
-      params.set("isRead", filters.isRead);
-    }
-
-    if (filters.type) {
-      params.set("type", filters.type);
-    }
-
-    const value = params.toString();
-
-    return value ? `?${value}` : "";
-  }, [filters]);
-
-  const loadNotifications = async () => {
+  const loadTaskPage = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await apiRequest(`/notifications${queryString}`);
+      const taskResponse = await apiRequest(`/tasks/${taskId}`);
+      const currentTask = taskResponse.data.task;
 
-      setNotifications(response.data.notifications || []);
-      setUnreadCount(response.data.unreadCount || 0);
+      setTask(currentTask);
+      setStatusForm({
+        status: currentTask.status
+      });
+
+      const currentProjectId = currentTask.project?._id || currentTask.project;
+
+      const [
+        membersResponse,
+        commentsResponse,
+        attachmentsResponse,
+        activityResponse,
+        githubLinksResponse
+      ] = await Promise.all([
+        apiRequest(`/projects/${currentProjectId}/members`),
+        apiRequest(`/tasks/${taskId}/comments`),
+        apiRequest(`/tasks/${taskId}/attachments`),
+        apiRequest(`/tasks/${taskId}/activity`),
+        apiRequest(`/github/tasks/${taskId}/links`)
+      ]);
+
+      setProjectMembers(membersResponse.data.members || []);
+      setComments(commentsResponse.data.comments || []);
+      setAttachments(attachmentsResponse.data.attachments || []);
+      setActivities(activityResponse.data.activities || []);
+      setGithubLinks(githubLinksResponse.data.links || []);
     } catch (error) {
       setError(error.message);
 
@@ -59,63 +92,187 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    loadNotifications();
-  }, [queryString]);
+    if (taskId) {
+      loadTaskPage();
+    }
+  }, [taskId]);
 
-  const handleFilterChange = (event) => {
-    setFilters((previous) => ({
-      ...previous,
-      [event.target.name]: event.target.value
-    }));
-  };
-
-  const handleMarkAsRead = async (notificationId) => {
-    setUpdating(true);
+  const handleUpdateStatus = async (event) => {
+    event.preventDefault();
+    setSavingStatus(true);
     setError("");
 
     try {
-      await apiRequest(`/notifications/${notificationId}/read`, {
-        method: "PATCH"
+      await apiRequest(`/tasks/${taskId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify(statusForm)
       });
 
-      await loadNotifications();
+      await loadTaskPage();
     } catch (error) {
       setError(error.message);
     } finally {
-      setUpdating(false);
+      setSavingStatus(false);
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    setUpdating(true);
+  const handleAddSubtask = async (event) => {
+    event.preventDefault();
+    setAddingSubtask(true);
     setError("");
 
     try {
-      await apiRequest("/notifications/read-all", {
-        method: "PATCH"
+      await apiRequest(`/tasks/${taskId}/subtasks`, {
+        method: "POST",
+        body: JSON.stringify(subtaskForm)
       });
 
-      await loadNotifications();
+      setSubtaskForm({
+        title: ""
+      });
+
+      await loadTaskPage();
     } catch (error) {
       setError(error.message);
     } finally {
-      setUpdating(false);
+      setAddingSubtask(false);
     }
   };
 
-  const handleOpenNotification = async (notification) => {
+  const handleToggleSubtask = async (subtask) => {
+    setError("");
+
     try {
-      if (!notification.isRead) {
-        await apiRequest(`/notifications/${notification._id}/read`, {
-          method: "PATCH"
-        });
-      }
+      await apiRequest(`/tasks/${taskId}/subtasks/${subtask._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: subtask.title,
+          isCompleted: !subtask.isCompleted
+        })
+      });
+
+      await loadTaskPage();
     } catch (error) {
-    } finally {
-      if (notification.link) {
-        router.push(notification.link);
-      }
+      setError(error.message);
     }
+  };
+
+  const handleDeleteSubtask = async (subtaskId) => {
+    setError("");
+
+    try {
+      await apiRequest(`/tasks/${taskId}/subtasks/${subtaskId}`, {
+        method: "DELETE"
+      });
+
+      await loadTaskPage();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const handleMentionToggle = (userId) => {
+    setCommentForm((previous) => {
+      const exists = previous.mentions.includes(userId);
+
+      return {
+        ...previous,
+        mentions: exists
+          ? previous.mentions.filter((id) => id !== userId)
+          : [...previous.mentions, userId]
+      };
+    });
+  };
+
+  const handleAddComment = async (event) => {
+    event.preventDefault();
+    setAddingComment(true);
+    setError("");
+
+    try {
+      await apiRequest(`/tasks/${taskId}/comments`, {
+        method: "POST",
+        body: JSON.stringify(commentForm)
+      });
+
+      setCommentForm({
+        body: "",
+        mentions: []
+      });
+
+      await loadTaskPage();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setAddingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    setError("");
+
+    try {
+      await apiRequest(`/comments/${commentId}`, {
+        method: "DELETE"
+      });
+
+      await loadTaskPage();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const handleUploadAttachment = async (event) => {
+    event.preventDefault();
+
+    if (!file) {
+      setError("Please choose a file");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      await apiRequest(`/tasks/${taskId}/attachments`, {
+        method: "POST",
+        body: formData
+      });
+
+      setFile(null);
+      event.target.reset();
+
+      await loadTaskPage();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    setError("");
+
+    try {
+      await apiRequest(`/tasks/${taskId}/attachments/${attachmentId}`, {
+        method: "DELETE"
+      });
+
+      await loadTaskPage();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const formatDate = (value) => {
+    if (!value) {
+      return "Not set";
+    }
+
+    return new Date(value).toLocaleDateString();
   };
 
   const formatDateTime = (value) => {
@@ -126,32 +283,27 @@ export default function NotificationsPage() {
     return new Date(value).toLocaleString();
   };
 
-  const getTypeLabel = (type) => {
-    const labels = {
-      task_assigned: "Task assigned",
-      comment_mention: "Mention",
-      task_status_changed: "Status changed"
-    };
-
-    return labels[type] || type;
-  };
-
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <p className="text-slate-400">Loading notifications...</p>
+        <p className="text-slate-400">Loading task...</p>
       </main>
     );
   }
 
   return (
     <AppShell
-      title="Notifications"
-      description="Track task assignments, mentions, and task status changes."
+      title={task?.title || "Task"}
+      description={
+        task?.description ||
+        "Manage task details, subtasks, comments, files, GitHub links, and activity."
+      }
+      backHref={projectId ? `/projects/${projectId}` : "/dashboard"}
+      backLabel="Back to project"
       actions={
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 px-5 py-3">
-          <p className="text-sm text-slate-400">Unread</p>
-          <p className="text-2xl font-bold text-blue-300">{unreadCount}</p>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="blue">{task?.status}</Badge>
+          <Badge variant="orange">{task?.priority}</Badge>
         </div>
       }
     >
@@ -161,104 +313,348 @@ export default function NotificationsPage() {
         </p>
       )}
 
-      <Panel>
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold">Inbox</h2>
-            <p className="text-slate-400 mt-2">Filter and manage your notifications.</p>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="lg:col-span-2 space-y-6">
+          <Panel>
+            <h2 className="text-xl font-bold">Task details</h2>
 
-          <div className="flex flex-col md:flex-row gap-3">
-            <select
-              name="isRead"
-              value={filters.isRead}
-              onChange={handleFilterChange}
-              className="rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
-            >
-              <option value="">All</option>
-              <option value="false">Unread</option>
-              <option value="true">Read</option>
-            </select>
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SmallInfo label="Created by" value={task?.createdBy?.name || "Unknown"} />
+              <SmallInfo label="Assigned to" value={task?.assignedTo?.name || "Unassigned"} />
+              <SmallInfo label="Due date" value={formatDate(task?.dueDate)} />
+              <SmallInfo label="Created at" value={formatDateTime(task?.createdAt)} />
+            </div>
 
-            <select
-              name="type"
-              value={filters.type}
-              onChange={handleFilterChange}
-              className="rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
-            >
-              <option value="">All types</option>
-              <option value="task_assigned">Task assigned</option>
-              <option value="comment_mention">Mention</option>
-              <option value="task_status_changed">Status changed</option>
-            </select>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {task?.labels?.length ? (
+                task.labels.map((label) => <Badge key={label}>{label}</Badge>)
+              ) : (
+                <p className="text-slate-500 text-sm">No labels</p>
+              )}
+            </div>
+          </Panel>
 
-            <button
-              onClick={handleMarkAllAsRead}
-              disabled={updating || unreadCount === 0}
-              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
-            >
-              Mark all read
-            </button>
-          </div>
-        </div>
+          <Panel>
+            <h2 className="text-xl font-bold">Subtasks</h2>
 
-        {notifications.length === 0 ? (
-          <EmptyState message="No notifications found." />
-        ) : (
-          <div className="mt-6 space-y-4">
-            {notifications.map((notification) => (
-              <div
-                key={notification._id}
-                className={
-                  notification.isRead
-                    ? "rounded-xl border border-slate-800 bg-slate-950 p-5"
-                    : "rounded-xl border border-blue-500/40 bg-blue-500/5 p-5"
+            <form onSubmit={handleAddSubtask} className="mt-5 flex flex-col md:flex-row gap-3">
+              <input
+                value={subtaskForm.title}
+                onChange={(event) =>
+                  setSubtaskForm({
+                    title: event.target.value
+                  })
                 }
+                placeholder="Add a subtask"
+                className="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+                required
+              />
+
+              <button
+                type="submit"
+                disabled={addingSubtask}
+                className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
               >
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="blue">{getTypeLabel(notification.type)}</Badge>
-                      {!notification.isRead && <Badge variant="green">New</Badge>}
-                    </div>
+                {addingSubtask ? "Adding..." : "Add"}
+              </button>
+            </form>
 
-                    <h3 className="font-bold text-lg mt-3">{notification.title}</h3>
-                    <p className="text-slate-300 mt-2">{notification.message}</p>
+            {task?.subtasks?.length === 0 ? (
+              <EmptyState message="No subtasks yet." />
+            ) : (
+              <div className="mt-6 space-y-3">
+                {task.subtasks.map((subtask) => (
+                  <div
+                    key={subtask._id}
+                    className="rounded-xl border border-slate-800 bg-slate-950 p-4 flex items-center justify-between gap-4"
+                  >
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={subtask.isCompleted}
+                        onChange={() => handleToggleSubtask(subtask)}
+                        className="h-4 w-4"
+                      />
 
-                    <div className="mt-4 space-y-1 text-sm text-slate-500">
-                      <p>From: {notification.actor?.name || "Unknown user"}</p>
-                      {notification.project?.name && <p>Project: {notification.project.name}</p>}
-                      {notification.task?.title && <p>Task: {notification.task.title}</p>}
-                      <p>{formatDateTime(notification.createdAt)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 lg:justify-end">
-                    {notification.link && (
-                      <button
-                        onClick={() => handleOpenNotification(notification)}
-                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500"
+                      <span
+                        className={
+                          subtask.isCompleted
+                            ? "line-through text-slate-500"
+                            : "text-slate-200"
+                        }
                       >
-                        Open
-                      </button>
-                    )}
+                        {subtask.title}
+                      </span>
+                    </label>
 
-                    {!notification.isRead && (
-                      <button
-                        onClick={() => handleMarkAsRead(notification._id)}
-                        disabled={updating}
-                        className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-900 disabled:opacity-60"
-                      >
-                        Mark read
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleDeleteSubtask(subtask._id)}
+                      className="text-sm text-red-300 hover:text-red-200"
+                    >
+                      Delete
+                    </button>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </Panel>
+            )}
+          </Panel>
+
+          <Panel>
+            <h2 className="text-xl font-bold">Comments</h2>
+
+            <form onSubmit={handleAddComment} className="mt-5 space-y-4">
+              <textarea
+                value={commentForm.body}
+                onChange={(event) =>
+                  setCommentForm((previous) => ({
+                    ...previous,
+                    body: event.target.value
+                  }))
+                }
+                placeholder="Write a comment..."
+                rows={4}
+                className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+                required
+              />
+
+              <div>
+                <p className="text-sm font-medium text-slate-300 mb-3">
+                  Mention project members
+                </p>
+
+                {projectMembers.length === 0 ? (
+                  <p className="text-sm text-slate-500">No project members available.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {projectMembers.map((member) => {
+                      const userId = member.user?._id;
+                      const selected = commentForm.mentions.includes(userId);
+
+                      return (
+                        <button
+                          type="button"
+                          key={member._id}
+                          onClick={() => handleMentionToggle(userId)}
+                          className={
+                            selected
+                              ? "rounded-full bg-blue-600 text-white px-3 py-1 text-sm"
+                              : "rounded-full bg-slate-800 text-slate-300 px-3 py-1 text-sm hover:bg-slate-700"
+                          }
+                        >
+                          @{member.user?.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={addingComment}
+                className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {addingComment ? "Posting..." : "Post comment"}
+              </button>
+            </form>
+
+            {comments.length === 0 ? (
+              <EmptyState message="No comments yet." />
+            ) : (
+              <div className="mt-6 space-y-4">
+                {comments.map((comment) => (
+                  <div
+                    key={comment._id}
+                    className="rounded-xl border border-slate-800 bg-slate-950 p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="font-bold">{comment.author?.name}</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {formatDateTime(comment.createdAt)}
+                          {comment.isEdited ? " · edited" : ""}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteComment(comment._id)}
+                        className="text-sm text-red-300 hover:text-red-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    <p className="text-slate-300 mt-4 whitespace-pre-wrap">{comment.body}</p>
+
+                    {comment.mentions?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-4">
+                        {comment.mentions.map((user) => (
+                          <Badge key={user._id} variant="blue">
+                            @{user.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </section>
+
+        <aside className="space-y-6">
+          <Panel>
+            <h2 className="text-xl font-bold">Update status</h2>
+
+            <form onSubmit={handleUpdateStatus} className="mt-5 space-y-4">
+              <select
+                value={statusForm.status}
+                onChange={(event) =>
+                  setStatusForm({
+                    status: event.target.value
+                  })
+                }
+                className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+              >
+                <option value="backlog">Backlog</option>
+                <option value="todo">Todo</option>
+                <option value="in-progress">In progress</option>
+                <option value="review">Review</option>
+                <option value="completed">Completed</option>
+              </select>
+
+              <button
+                type="submit"
+                disabled={savingStatus}
+                className="w-full rounded-xl bg-blue-600 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {savingStatus ? "Updating..." : "Update status"}
+              </button>
+            </form>
+          </Panel>
+
+          <Panel>
+            <h2 className="text-xl font-bold">Attachments</h2>
+
+            <form onSubmit={handleUploadAttachment} className="mt-5 space-y-4">
+              <input
+                type="file"
+                onChange={(event) => setFile(event.target.files?.[0] || null)}
+                className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white"
+              />
+
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full rounded-xl bg-blue-600 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {uploading ? "Uploading..." : "Upload file"}
+              </button>
+            </form>
+
+            {attachments.length === 0 ? (
+              <p className="text-sm text-slate-500 mt-5">No attachments yet.</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment._id}
+                    className="rounded-xl bg-slate-950 border border-slate-800 p-4"
+                  >
+                    <a
+                      href={attachment.url}
+                      target="_blank"
+                      className="font-medium text-blue-300 hover:text-blue-200 break-all"
+                    >
+                      {attachment.originalName}
+                    </a>
+
+                    <p className="text-xs text-slate-500 mt-2">
+                      {(attachment.size / 1024).toFixed(2)} KB · {attachment.mimeType}
+                    </p>
+
+                    <button
+                      onClick={() => handleDeleteAttachment(attachment._id)}
+                      className="text-sm text-red-300 hover:text-red-200 mt-3"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <h2 className="text-xl font-bold">GitHub links</h2>
+
+            {githubLinks.length === 0 ? (
+              <p className="text-sm text-slate-500 mt-5">No GitHub links for this task.</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {githubLinks.map((link) => (
+                  <div
+                    key={link._id}
+                    className="rounded-xl bg-slate-950 border border-slate-800 p-4"
+                  >
+                    <a
+                      href={link.issueUrl}
+                      target="_blank"
+                      className="font-medium text-blue-300 hover:text-blue-200"
+                    >
+                      #{link.issueNumber} {link.issueTitle}
+                    </a>
+
+                    <p className="text-sm text-slate-500 mt-2">
+                      {link.repository?.fullName}
+                    </p>
+
+                    <div className="mt-3">
+                      <Badge variant={link.issueState === "open" ? "green" : "default"}>
+                        {link.issueState}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <h2 className="text-xl font-bold">Activity</h2>
+
+            {activities.length === 0 ? (
+              <p className="text-sm text-slate-500 mt-5">No activity yet.</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {activities.map((activity) => (
+                  <div
+                    key={activity._id}
+                    className="rounded-xl bg-slate-950 border border-slate-800 p-4"
+                  >
+                    <p className="font-medium">{activity.action}</p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      {activity.user?.name || "Unknown user"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {formatDateTime(activity.createdAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+        </aside>
+      </div>
     </AppShell>
+  );
+}
+
+function SmallInfo({ label, value }) {
+  return (
+    <div className="rounded-xl bg-slate-950 border border-slate-800 p-4">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="font-medium mt-1">{value}</p>
+    </div>
   );
 }
