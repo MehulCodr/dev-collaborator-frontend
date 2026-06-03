@@ -1,32 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect ,useState } from "react";
-import { apiRequest } from "@/lib/api";
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-
 export default function RegisterPage() {
+  const router = useRouter();
+  const { register, user, authLoading } = useAuth();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: ""
   });
-  const router = useRouter();
-  const { user, authLoading } = useAuth();
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
       router.replace("/dashboard");
     }
   }, [authLoading, user, router]);
-
-  const [createdUser, setCreatedUser] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
     setForm((previous) => ({
@@ -41,12 +37,8 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await apiRequest("/auth/register", {
-        method: "POST",
-        body: JSON.stringify(form)
-      });
-
-      setCreatedUser(response.data.user);
+      await register(form);
+      router.push("/dashboard");
     } catch (error) {
       setError(error.message);
     } finally {
@@ -54,21 +46,10 @@ export default function RegisterPage() {
     }
   };
 
-  if (createdUser) {
+  if (authLoading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
-        <section className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-xl">
-          <p className="text-sm text-emerald-400 font-medium">Account created successfully</p>
-          <h1 className="text-2xl font-bold mt-2">Welcome, {createdUser.name}</h1>
-          <p className="text-slate-400 mt-2">{createdUser.email}</p>
-
-          <Link
-            href="/"
-            className="mt-8 block w-full rounded-xl bg-blue-600 py-3 text-center font-semibold hover:bg-blue-500"
-          >
-            Go to login
-          </Link>
-        </section>
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <p className="text-slate-400">Checking session...</p>
       </main>
     );
   }
@@ -80,7 +61,7 @@ export default function RegisterPage() {
           <p className="text-sm text-blue-400 font-medium">DevCollaborator</p>
           <h1 className="text-3xl font-bold mt-2">Create your account</h1>
           <p className="text-slate-400 mt-3">
-            Start managing teams, projects, tasks, comments, files, notifications, and analytics.
+            Register and jump straight into your workspace.
           </p>
         </div>
 
