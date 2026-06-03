@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect ,useState } from "react";
 import { apiRequest } from "@/lib/api";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 
 export default function RegisterPage() {
@@ -11,6 +15,14 @@ export default function RegisterPage() {
     email: "",
     password: ""
   });
+  const router = useRouter();
+  const { user, authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, user, router]);
 
   const [createdUser, setCreatedUser] = useState(null);
   const [error, setError] = useState("");

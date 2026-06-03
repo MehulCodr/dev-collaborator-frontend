@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, user, authLoading } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -15,6 +16,12 @@ export default function LoginPage() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, user, router]);
 
   const handleChange = (event) => {
     setForm((previous) => ({
@@ -29,11 +36,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await apiRequest("/auth/login", {
-        method: "POST",
-        body: JSON.stringify(form)
-      });
-
+      await login(form);
       router.push("/dashboard");
     } catch (error) {
       setError(error.message);
@@ -42,6 +45,14 @@ export default function LoginPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <p className="text-slate-400">Checking session...</p>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
       <section className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-8 shadow-xl">
@@ -49,7 +60,7 @@ export default function LoginPage() {
           <p className="text-sm text-blue-400 font-medium">DevCollaborator</p>
           <h1 className="text-3xl font-bold mt-2">Login to your workspace</h1>
           <p className="text-slate-400 mt-3">
-            Manage projects, tasks, comments, notifications, and analytics from one place.
+            Manage projects, tasks, comments, notifications, GitHub integrations, and AI insights.
           </p>
         </div>
 
