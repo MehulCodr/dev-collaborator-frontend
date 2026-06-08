@@ -107,13 +107,13 @@ export default function GitHubProjectPanel({ projectId, projectMembers = [], onT
 
     useEffect(() => {
         if (projectId) {
-            loadGitHubPanel();
+            Promise.resolve().then(loadGitHubPanel);
         }
     }, [projectId]);
 
     useEffect(() => {
         if (status?.connected) {
-            loadGithubRepositories();
+            Promise.resolve().then(loadGithubRepositories);
         }
     }, [status?.connected]);
 

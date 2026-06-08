@@ -59,7 +59,7 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    loadNotifications();
+    Promise.resolve().then(loadNotifications);
   }, [queryString]);
 
   const handleFilterChange = (event) => {

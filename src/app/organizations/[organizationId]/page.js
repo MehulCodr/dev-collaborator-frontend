@@ -63,7 +63,7 @@ export default function OrganizationDetailPage() {
 
   useEffect(() => {
     if (organizationId) {
-      loadOrganizationPage();
+      Promise.resolve().then(loadOrganizationPage);
     }
   }, [organizationId]);
 

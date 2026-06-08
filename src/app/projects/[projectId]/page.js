@@ -11,6 +11,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import AITaskAssistantPanel from "@/components/ai/AITaskAssistantPanel";
 import AIProjectIntelligencePanel from "@/components/ai/AIProjectIntelligencePanel";
 import Badge from "@/components/ui/Badge";
+import RecommendedTeammatesPanel from "@/components/matching/RecommendedTeammatesPanel";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -94,7 +95,7 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (projectId) {
-      loadProjectPage();
+      Promise.resolve().then(loadProjectPage);
     }
   }, [projectId, queryString]);
 
@@ -317,41 +318,45 @@ export default function ProjectDetailPage() {
           </form>
         </Panel>
 
-        <Panel>
-          <h2 className="text-xl font-bold">Add project member</h2>
-          <p className="text-slate-400 mt-2">User must already be an organization member.</p>
+        <div className="space-y-6">
+          <Panel>
+            <h2 className="text-xl font-bold">Add project member</h2>
+            <p className="text-slate-400 mt-2">User must already be an organization member.</p>
 
-          <form onSubmit={handleAddProjectMember} className="mt-6 space-y-4">
-            <input
-              name="email"
-              type="email"
-              value={memberForm.email}
-              onChange={handleMemberChange}
-              placeholder="member@example.com"
-              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
-              required
-            />
+            <form onSubmit={handleAddProjectMember} className="mt-6 space-y-4">
+              <input
+                name="email"
+                type="email"
+                value={memberForm.email}
+                onChange={handleMemberChange}
+                placeholder="member@example.com"
+                className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+                required
+              />
 
-            <select
-              name="role"
-              value={memberForm.role}
-              onChange={handleMemberChange}
-              className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
-            >
-              <option value="manager">Manager</option>
-              <option value="developer">Developer</option>
-              <option value="viewer">Viewer</option>
-            </select>
+              <select
+                name="role"
+                value={memberForm.role}
+                onChange={handleMemberChange}
+                className="w-full rounded-xl bg-slate-950 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+              >
+                <option value="manager">Manager</option>
+                <option value="developer">Developer</option>
+                <option value="viewer">Viewer</option>
+              </select>
 
-            <button
-              type="submit"
-              disabled={addingMember}
-              className="w-full rounded-xl bg-blue-600 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
-            >
-              {addingMember ? "Adding..." : "Add project member"}
-            </button>
-          </form>
-        </Panel>
+              <button
+                type="submit"
+                disabled={addingMember}
+                className="w-full rounded-xl bg-blue-600 py-3 font-semibold hover:bg-blue-500 disabled:opacity-60"
+              >
+                {addingMember ? "Adding..." : "Add project member"}
+              </button>
+            </form>
+          </Panel>
+
+          <RecommendedTeammatesPanel projectId={projectId} onMemberAdded={loadProjectPage} />
+        </div>
       </div>
 
       <Panel className="mt-8">

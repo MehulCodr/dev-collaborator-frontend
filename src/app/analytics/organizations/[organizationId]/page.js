@@ -43,7 +43,7 @@ export default function ProjectAnalyticsPage() {
 
   useEffect(() => {
     if (projectId) {
-      loadAnalytics();
+      Promise.resolve().then(loadAnalytics);
     }
   }, [projectId]);
 

@@ -93,7 +93,7 @@ export default function TaskDetailPage() {
 
   useEffect(() => {
     if (taskId) {
-      loadTaskPage();
+      Promise.resolve().then(loadTaskPage);
     }
   }, [taskId]);
 

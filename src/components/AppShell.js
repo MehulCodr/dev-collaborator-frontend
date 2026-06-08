@@ -11,6 +11,10 @@ const navItems = [
     href: "/dashboard"
   },
   {
+    label: "Profile",
+    href: "/profile"
+  },
+  {
     label: "Notifications",
     href: "/notifications"
   }
@@ -107,6 +111,13 @@ export default function AppShell({
                         className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900"
                       >
                         Notifications
+                      </Link>
+
+                      <Link
+                        href="/profile"
+                        className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900"
+                      >
+                        Profile
                       </Link>
                     </div>
 

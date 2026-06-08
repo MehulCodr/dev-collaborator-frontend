@@ -38,6 +38,7 @@ export const clearAuthTokens = () => {
 };
 
 const getRefreshToken = () => authStorage.get(REFRESH_TOKEN_KEY);
+const getAccessToken = () => authStorage.get(ACCESS_TOKEN_KEY);
 
 
 const notifyAuthFailed = () => {

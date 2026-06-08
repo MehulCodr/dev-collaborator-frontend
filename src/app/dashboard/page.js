@@ -43,7 +43,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadDashboard();
+    Promise.resolve().then(loadDashboard);
   }, []);
 
   const handleChange = (event) => {
