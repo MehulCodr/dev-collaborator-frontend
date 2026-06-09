@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import Panel from "@/components/ui/Panel";
 import EmptyState from "@/components/ui/EmptyState";
 import Badge from "@/components/ui/Badge";
+import ComplexityPanel from "@/components/tasks/ComplexityPanel";
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -532,6 +533,9 @@ export default function TaskDetailPage() {
               </button>
             </form>
           </Panel>
+
+          {/* ── Complexity AI Panel ───────────────────────────────────────── */}
+          <ComplexityPanel taskId={taskId} />
 
           <Panel>
             <h2 className="text-xl font-bold">Attachments</h2>
