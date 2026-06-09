@@ -1,4 +1,5 @@
 "use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,6 +10,10 @@ const navItems = [
   {
     label: "Dashboard",
     href: "/dashboard"
+  },
+  {
+    label: "Recommendations",
+    href: "/recommendations"
   },
   {
     label: "Profile",
@@ -104,6 +109,13 @@ export default function AppShell({
                         className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900"
                       >
                         Dashboard
+                      </Link>
+
+                      <Link
+                        href="/recommendations"
+                        className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-900"
+                      >
+                        Recommendations
                       </Link>
 
                       <Link
